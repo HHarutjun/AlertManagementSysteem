@@ -1,23 +1,23 @@
-// <copyright file="AlertManager.cs" company="PlaceholderCompany">
-// Copyright (c) PlaceholderCompany. All rights reserved.
+// <copyright file="AlertManager.cs" company="The Learning Network">
+// Copyright (c) The Learning Network. All rights reserved.
 // </copyright>
 
-/// <summary>
-/// This file contains the AlertManager class, responsible for processing alerts
-/// based on logs and sending notifications to recipients.
-/// </summary>
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Threading.Tasks;
 
+/// <summary>
+/// Manages the processing of alerts, including grouping, notification, and task creation.
+/// </summary>
 public class AlertManager
 {
-    private readonly ISentAlertsStorage _sentAlertsStorage;
-    private readonly ISet<string> _sentAlerts;
-    private readonly AlertStrategyManager _strategyManager;
-    private readonly IRecipientResolver _recipientResolver;
-    private readonly ITaskCreator _taskCreator;
+    private readonly ISentAlertsStorage sentAlertsStorage;
+    private readonly ISet<string> sentAlerts;
+    private readonly AlertStrategyManager strategyManager;
+    private readonly IRecipientResolver recipientResolver;
+    private readonly ITaskCreator taskCreator;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AlertManager"/> class.
@@ -41,11 +41,11 @@ public class AlertManager
         this.LogProcessor = logProcessor;
         this.AlertCreator = alertCreator;
         this.AlertSender = alertSender;
-        _sentAlertsStorage = sentAlertsStorage;
-        _sentAlerts = _sentAlertsStorage.LoadSentAlerts();
-        _strategyManager = strategyManager;
-        _recipientResolver = recipientResolver;
-        _taskCreator = taskCreator;
+        this.sentAlertsStorage = sentAlertsStorage;
+        this.sentAlerts = this.sentAlertsStorage.LoadSentAlerts();
+        this.strategyManager = strategyManager;
+        this.recipientResolver = recipientResolver;
+        this.taskCreator = taskCreator;
     }
 
     private ILogProcessor LogProcessor { get; }
@@ -61,7 +61,7 @@ public class AlertManager
     public async Task ProcessAlertsAsync()
     {
         // Refresh recipients from storage before processing
-        if (_recipientResolver is RecipientResolver resolver)
+        if (this.recipientResolver is RecipientResolver resolver)
         {
             resolver.RefreshRecipients();
         }
@@ -76,7 +76,7 @@ public class AlertManager
 
         // Gather all unique recipients
         var allRecipients = new List<Recipient>();
-        if (_recipientResolver is IRecipientListProvider listProvider)
+        if (this.recipientResolver is IRecipientListProvider listProvider)
         {
             allRecipients = listProvider.GetAllRecipients().ToList();
         }
@@ -141,9 +141,9 @@ public class AlertManager
                         var logsForComponent = groupLogs.Where(l => l.ExtractComponent() == component).ToList();
                         var newProblemIds = logsForComponent.Select(l => l.ExtractProblemId()).Distinct().ToList();
 
-                        if (await _taskCreator.TaskExistsAsync(recipient.Board, workItemTitle))
+                        if (await this.taskCreator.TaskExistsAsync(recipient.Board, workItemTitle))
                         {
-                            var description = await _taskCreator.GetWorkItemDescriptionAsync(recipient.Board, workItemTitle) ?? "";
+                            var description = await this.taskCreator.GetWorkItemDescriptionAsync(recipient.Board, workItemTitle) ?? string.Empty;
                             var knownProblemIds = new HashSet<string>();
                             foreach (var line in description.Split('\n'))
                             {
@@ -151,46 +151,50 @@ public class AlertManager
                                 {
                                     var pid = line.Split("ProblemId:").Last().Trim();
                                     if (!string.IsNullOrWhiteSpace(pid))
+                                    {
                                         knownProblemIds.Add(pid);
+                                    }
                                 }
                             }
+
                             var toAdd = newProblemIds.Where(pid => !knownProblemIds.Contains(pid)).ToList();
                             if (toAdd.Any())
                             {
                                 var updatedDescription = description + "\n" + string.Join("\n", toAdd.Select(pid => $"ProblemId: {pid}"));
-                                await _taskCreator.UpdateWorkItemDescriptionAsync(recipient.Board, workItemTitle, updatedDescription);
+                                await this.taskCreator.UpdateWorkItemDescriptionAsync(recipient.Board, workItemTitle, updatedDescription);
                                 foreach (var email in recipient.Emails)
                                 {
                                     await this.AlertSender.SendAlertAsync(
                                         string.Join("\n", logsForComponent),
                                         email,
-                                        groupKey
-                                    );
+                                        groupKey);
                                 }
                             }
                         }
                         else
                         {
                             var description = string.Join("\n", newProblemIds.Select(pid => $"ProblemId: {pid}"));
-                            await _taskCreator.CreateWorkItemAsync(recipient.Board, workItemTitle, description, WorkItemType.Bug);
+                            await this.taskCreator.CreateWorkItemAsync(recipient.Board, workItemTitle, description, WorkItemType.Bug);
                             foreach (var email in recipient.Emails)
                             {
                                 await this.AlertSender.SendAlertAsync(
                                     string.Join("\n", logsForComponent),
                                     email,
-                                    groupKey
-                                );
+                                    groupKey);
                             }
                         }
                     }
+
                     continue;
                 }
 
                 foreach (var component in components)
                 {
-
                     if (processedComponents.Contains(component))
+                    {
                         continue;
+                    }
+
                     processedComponents.Add(component);
 
                     var logsForComponent = groupLogs.Where(l => l.ExtractComponent() == component).ToList();
@@ -203,17 +207,16 @@ public class AlertManager
                         : $"{component} - {problemId}";
 
                     var taskReference = workItemTitle;
-                    if (!await _taskCreator.TaskExistsAsync(recipient.Board, workItemTitle))
+                    if (!await this.taskCreator.TaskExistsAsync(recipient.Board, workItemTitle))
                     {
                         try
                         {
                             Console.WriteLine($"[INFO] Taak aanmaken: '{workItemTitle}' op board '{recipient.Board}'");
-                            var workItemId = await _taskCreator.CreateWorkItemAsync(
+                            var workItemId = await this.taskCreator.CreateWorkItemAsync(
                                 recipient.Board,
                                 workItemTitle,
                                 string.Join("\n", logsForComponent),
-                                WorkItemType.Bug
-                            );
+                                WorkItemType.Bug);
                             taskReference = !string.IsNullOrWhiteSpace(workItemId)
                                 ? $"#{workItemId} ({workItemTitle})"
                                 : workItemTitle;
@@ -226,13 +229,15 @@ public class AlertManager
                     }
                     else
                     {
-                        if (_taskCreator is TaskCreator tc)
+                        if (this.taskCreator is TaskCreator tc)
                         {
                             try
                             {
                                 var workItemId = await tc.GetWorkItemIdAsync(recipient.Board, workItemTitle);
                                 if (!string.IsNullOrWhiteSpace(workItemId))
+                                {
                                     taskReference = $"#{workItemId} ({workItemTitle})";
+                                }
                             }
                             catch (Exception ex)
                             {
@@ -240,6 +245,7 @@ public class AlertManager
                             }
                         }
                     }
+
                     taskReferencePerComponent[component] = taskReference;
                 }
 
@@ -250,10 +256,16 @@ public class AlertManager
                 {
                     // Check of deze recipient verantwoordelijk is voor deze component
                     if (!recipient.ResponsibleComponents.Any(c => string.Equals(c, component, StringComparison.OrdinalIgnoreCase)))
+                    {
                         continue;
+                    }
 
                     var logsForComponent = groupLogs.Where(l => l.ExtractComponent() == component).ToList();
-                    if (!logsForComponent.Any()) continue;
+                    if (!logsForComponent.Any())
+                    {
+                        continue;
+                    }
+
                     var taakRef = taskReferencePerComponent.TryGetValue(component, out var t) ? t : string.Empty;
                     var block = string.Join("\n", logsForComponent) +
                                 (!string.IsNullOrWhiteSpace(taakRef) ? $"\nTaak referentie: {taakRef}" : string.Empty);
@@ -265,6 +277,7 @@ public class AlertManager
                             blocks = new HashSet<string>();
                             recipientToBlocks[email] = blocks;
                         }
+
                         if (!blocks.Any(b => b == block))
                         {
                             blocks.Add(block);
@@ -277,16 +290,19 @@ public class AlertManager
                     var recipientEmail = kvp.Key;
                     var blocks = kvp.Value.ToList();
                     if (blocks.Count == 0)
+                    {
                         continue;
+                    }
+
                     var uniqueGroupKey = $"{groupKey}|{recipientEmail}";
                     if (sentThisRun.Contains(uniqueGroupKey))
                     {
                         continue;
                     }
+
                     string messageWithBlocks = string.Join(
                         "\n-----------------------------\n",
-                        blocks
-                    );
+                        blocks);
                     try
                     {
                         Console.WriteLine($"[INFO] Alert versturen naar {recipientEmail} voor groupKey: {uniqueGroupKey}");
@@ -297,19 +313,20 @@ public class AlertManager
                     {
                         Console.WriteLine($"[Error] Failed to send alert to {recipientEmail} for groupKey {uniqueGroupKey}: {ex.Message}");
                     }
+
                     sentThisRun.Add(uniqueGroupKey);
                 }
             }
         }
     }
 
-    private Recipient DetermineRecipient(Alert alert)
+    private Recipient? DetermineRecipient(Alert alert)
     {
         if (alert == null || string.IsNullOrEmpty(alert.Component))
         {
             return null;
         }
 
-        return _recipientResolver.ResolveRecipient(alert);
+        return this.recipientResolver.ResolveRecipient(alert);
     }
 }
