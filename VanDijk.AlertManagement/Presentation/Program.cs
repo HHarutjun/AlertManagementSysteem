@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.StaticFiles;
 using System.Threading.Tasks;
 using System.Linq;
+using VanDijk.AlertManagement.Core.Interfaces;
 
 class Program
 {

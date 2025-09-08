@@ -1,7 +1,3 @@
-// <copyright file="AlertManager.cs" company="The Learning Network">
-// Copyright (c) The Learning Network. All rights reserved.
-// </copyright>
-
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;

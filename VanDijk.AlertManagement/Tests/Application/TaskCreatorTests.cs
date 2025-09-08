@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using Moq;
+using VanDijk.AlertManagement.Core.Interfaces;
 using Xunit;
 
 public class TaskCreatorTests

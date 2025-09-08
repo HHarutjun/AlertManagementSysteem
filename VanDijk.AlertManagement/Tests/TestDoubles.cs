@@ -4,6 +4,8 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Xunit;
+using VanDijk.AlertManagement.Core.Interfaces;
+
 
 // In-memory log provider for integration tests
 public class InMemoryLogProvider : ILogProvider

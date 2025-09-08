@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Moq;
 using Moq.Protected;
+using VanDijk.AlertManagement.Core.Interfaces;
 using Xunit;
 
 public class TaskCreatorIntegrationTests
