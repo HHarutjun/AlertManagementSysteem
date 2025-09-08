@@ -1,0 +1,241 @@
+@page
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Recipients Dashboard";
+}
+<div class="container">
+    <div class="tabs">
+        <button class="tab-btn active" id="addUserTabBtn">Gebruiker toevoegen</button>
+        <button class="tab-btn" id="editRecipientTabBtn">Gegevens wijzigen</button>
+    </div>
+    <div style="margin-bottom: 20px;">
+        <a href="/api/recipients/grouping-info" target="_blank" style="text-decoration:none;">
+            <button type="button" class="info-btn">
+                Uitleg correlatie/grouping strategieën
+            </button>
+        </a>
+    </div>
+    <div id="addUserTab" class="tab-content active">
+        <form id="recipientForm">
+            <div class="input-wrapper">
+                <label>Voornaam:
+                    <input type="text" name="FirstName" required />
+                </label>
+            </div>
+            <div class="input-wrapper">
+                <label>Achternaam:
+                    <input type="text" name="LastName" required />
+                </label>
+            </div>
+            <div class="input-wrapper">
+                <label>Email:
+                    <input type="email" name="Email" required />
+                </label>
+            </div>
+            <div class="input-wrapper">
+                <label>Verantwoordelijke componenten (komma-gescheiden):
+                    <input type="text" name="ResponsibleComponents" required placeholder="bijv. func-vdl-bb-backend-weu-tst, func-vdl-lmlnext-proxy-weu-prd" />
+                </label>
+            </div>
+            <div class="input-wrapper">
+                <label>Teamnaam:
+                    <input type="text" name="Board" required placeholder="bijv. Sheldon" />
+                </label>
+            </div>
+            <div class="input-wrapper">
+                <label>Grouping strategy:
+                    <!-- Gewone select (geen multiple) -->
+                    <select name="GroupingStrategy" id="groupingStrategy" required></select>
+                </label>
+            </div>
+            <button type="submit">Toevoegen</button>
+            <div id="result"></div>
+        </form>
+    </div>
+    <div id="editRecipientTab" class="tab-content">
+        <form id="editRecipientForm">
+            <div class="input-wrapper">
+                <label>Email:
+                    <input type="email" name="Email" id="editEmail" required />
+                </label>
+            </div>
+            <div class="input-wrapper">
+                <label>Huidige correlatie strategie:
+                    <span id="GroupingStrategies" style="font-weight:bold; color:#4C7B8A; margin-left:8px;"></span>
+                </label>
+            </div>
+            <div class="input-wrapper">
+                <label>Nieuwe correlatie strategie:
+                    <!-- Gewone select (geen multiple) -->
+                    <select name="GroupingStrategy" id="editGroupingStrategy" required></select>
+                </label>
+            </div>
+            <div class="input-wrapper">
+                <label>Extra componenten toevoegen (komma-gescheiden):</label>
+                <input type="text" id="editResponsibleComponents" name="ResponsibleComponents" placeholder="bijv. func-vdl-bb-backend-weu-tst, func-vdl-lmlnext-proxy-weu-prd" />
+            </div>
+            <div class="input-wrapper">
+                <label>Bestaande componenten (vink aan om te verwijderen):</label>
+                <div id="componentsCheckboxes" style="margin-top:5px;"></div>
+            </div>
+            <button type="submit">Gegevens wijzigen</button>
+            <div id="editResult"></div>
+        </form>
+    </div>
+</div>
+<script>
+    // Tab functionaliteit
+    const addUserTabBtn = document.getElementById('addUserTabBtn');
+    const editRecipientTabBtn = document.getElementById('editRecipientTabBtn');
+    const addUserTab = document.getElementById('addUserTab');
+    const editRecipientTab = document.getElementById('editRecipientTab');
+
+    addUserTabBtn.onclick = function() {
+        addUserTabBtn.classList.add('active');
+        editRecipientTabBtn.classList.remove('active');
+        addUserTab.classList.add('active');
+        editRecipientTab.classList.remove('active');
+    };
+    editRecipientTabBtn.onclick = function() {
+        editRecipientTabBtn.classList.add('active');
+        addUserTabBtn.classList.remove('active');
+        editRecipientTab.classList.add('active');
+        addUserTab.classList.remove('active');
+    };
+
+    // Haal grouping strategies op voor beide forms
+    let groupingStrategiesList = [];
+    fetch('/api/recipients/grouping-strategies')
+        .then(r => r.json())
+        .then(data => {
+            var select1 = document.getElementById('groupingStrategy');
+            var select2 = document.getElementById('editGroupingStrategy');
+            select1.innerHTML = '';
+            select2.innerHTML = '';
+            data.forEach(function(opt, idx) {
+                var option1 = document.createElement('option');
+                option1.value = idx;
+                option1.text = opt;
+                select1.appendChild(option1);
+
+                var option2 = document.createElement('option');
+                option2.value = idx;
+                option2.text = opt;
+                select2.appendChild(option2);
+            });
+        });
+
+    document.getElementById('editEmail').addEventListener('blur', function() {
+        var email = this.value.trim();
+        if (!email) return;
+        // 1. Haal componenten op
+        fetch('/api/recipients/components-by-email?email=' + encodeURIComponent(email))
+            .then(r => {
+                if (r.ok) return r.json();
+                return r.text().then(t => { throw new Error(t); });
+            })
+            .then(components => {
+                var container = document.getElementById('componentsCheckboxes');
+                container.innerHTML = '';
+                components.forEach(function(comp) {
+                    var div = document.createElement('div');
+                    div.innerHTML = `
+                    <label class="component-checkbox-label">
+                        <input type="checkbox" class="component-checkbox" value="${comp}">
+                        <span>${comp}</span>
+                    </label>
+                    `;
+
+                    container.appendChild(div);
+                });
+                document.getElementById('editResult').innerHTML = '';
+            })
+            .catch(err => {
+                document.getElementById('componentsCheckboxes').innerHTML = '';
+                document.getElementById('editResult').innerHTML = '<span class="error">Fout: ' + err.message + '</span>';
+            });
+
+        // 2. Haal grouping strategy op
+        fetch('/api/recipients')
+            .then(r => r.json())
+            .then(recipients => {
+                var recipient = recipients.find(r =>
+                    r.emails && r.emails.some(e => e.toLowerCase() === email.toLowerCase())
+                );
+                if (recipient && recipient.groupingStrategy) {
+                    document.getElementById('GroupingStrategies').textContent = recipient.groupingStrategy;
+                    // Zet de select op de juiste strategy
+                    var select = document.getElementById('editGroupingStrategy');
+                    Array.from(select.options).forEach(function(opt, idx) {
+                        opt.selected = (opt.text === recipient.groupingStrategy);
+                    });
+                } else {
+                    document.getElementById('GroupingStrategies').textContent = '';
+                }
+            });
+    });
+
+    // Toevoegen van recipient
+    document.getElementById('recipientForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var form = e.target;
+        var data = {
+            FirstName: form.FirstName.value,
+            LastName: form.LastName.value,
+            Email: form.Email.value,
+            ResponsibleComponents: form.ResponsibleComponents.value.split(',').map(x => x.trim()).filter(x => x),
+            Board: form.Board.value,
+            GroupingStrategy: parseInt(form.GroupingStrategy.value, 10)
+        };
+        fetch('/api/recipients', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+        .then(r => {
+            if (r.ok) return r.text();
+            return r.text().then(t => { throw new Error(t); });
+        })
+        .then(() => {
+            document.getElementById('result').innerHTML = '<span class="success">Recipient succesvol toegevoegd!</span>';
+            form.reset();
+        })
+        .catch(err => {
+            document.getElementById('result').innerHTML = '<span class="error">Fout: ' + err.message + '</span>';
+        });
+    });
+
+    // Gegevens wijzigen
+    document.getElementById('editRecipientForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var form = e.target;
+        var allCheckboxes = Array.from(document.querySelectorAll('.component-checkbox'));
+        var keptComponents = allCheckboxes.filter(cb => !cb.checked).map(cb => cb.value);
+        var extraComponents = form.ResponsibleComponents.value
+            ? form.ResponsibleComponents.value.split(',').map(x => x.trim()).filter(x => x)
+            : [];
+        var allComponents = Array.from(new Set([...keptComponents, ...extraComponents]));
+        var data = {
+            Email: form.Email.value,
+            GroupingStrategy: parseInt(form.GroupingStrategy.value, 10),
+            ResponsibleComponents: allComponents
+        };
+        fetch('/api/recipients/update-recipient', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+        .then(r => {
+            if (r.ok) return r.text();
+            return r.text().then(t => { throw new Error(t); });
+        })
+        .then(() => {
+            document.getElementById('editResult').innerHTML = '<span class="success">Gegevens succesvol gewijzigd!</span>';
+            form.reset();
+            document.getElementById('componentsCheckboxes').innerHTML = '';
+        })
+        .catch(err => {
+            document.getElementById('editResult').innerHTML = '<span class="error">Fout: ' + err.message + '</span>';
+        });
+    });
+</script>

@@ -1,0 +1,26 @@
+[
+  {
+    "Name": "Harutjun Harutjunjan",
+    "Emails": [
+      "harutjun.harutjunjan@luminis.eu"
+    ],
+    "ResponsibleComponents": [
+      "func-vdl-lmlnext-proxy-weu-prd",
+      "func-vdl-lmlnext-public-weu-acc"
+    ],
+    "Board": "Development\\Sheldon",
+    "GroupingStrategy": "Severity"
+  },
+  {
+    "Name": "Jan Janssen",
+    "Emails": [
+      "hh.harutjun@gmail.com"
+    ],
+    "ResponsibleComponents": [
+      "func-vdl-lmlnext-proxy-weu-prd",
+      "func-vdl-lmlnext-public-weu-acc"
+    ],
+    "Board": "Development\\Sheldon",
+    "GroupingStrategy": "KnownProblemsFilter"
+  }
+]

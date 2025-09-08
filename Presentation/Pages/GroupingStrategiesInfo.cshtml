@@ -1,0 +1,38 @@
+@page
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Uitleg Grouping/Correlatie Strategieën";
+}
+<div class="container">
+    <h2>Uitleg Grouping/Correlatie Strategieën</h2>
+    <div class="info-section">
+        In het alertmanagement systeem kun je kiezen uit verschillende strategieën om logs te groeperen tot alerts. Hieronder vind je een korte uitleg per strategie:
+    </div>
+    <h3>Severity</h3>
+    <ul>
+        <li>Groepering op basis van de <b>ernst (severity)</b> van de log.</li>
+        <li>Alle logs met dezelfde severity (bijvoorbeeld <code>Fatal</code>, <code>Warning</code>, <code>Info</code>) worden samengevoegd tot één alert.</li>
+        <li><code>GroupingStrategies: [ "Severity" ]</code></li>
+    </ul>
+    <h3>ExceptionType</h3>
+    <ul>
+        <li>Groepering op basis van het <b>type exception</b> dat is opgetreden.</li>
+        <li>Alle logs met hetzelfde exception type (bijvoorbeeld <code>NullReferenceException</code> of <code>RpcException</code>) worden samengevoegd tot één alert.</li>
+        <li><code>GroupingStrategies: [ "ExceptionType" ]</code></li>
+    </ul>
+    <h3>KnownProblemsFilter</h3>
+    <ul>
+        <li>Groepering op <b>component</b>, en binnen die component op unieke problemen (<code>problemId</code>).</li>
+        <li>Per component wordt één taak aangemaakt. Nieuwe problemen worden toegevoegd aan de bestaande taak (in de description).</li>
+        <li>Alleen als er een nieuw probleem is (nog niet bekend in de taak), wordt een alert verstuurd.</li>
+        <li>Geen alert als er geen nieuwe problemen zijn.</li>
+        <li><code>GroupingStrategies: [ "KnownProblemsFilter" ]</code> <i>(optioneel, afhankelijk van implementatie)</i></li>
+        <li><b>Gebruik:</b> Handig als je alleen notificaties wilt bij nieuwe issues binnen een component, zonder spam bij bekende problemen.</li>
+    </ul>
+    <h3>Gebruik</h3>
+    <ul>
+        <li>De gekozen strategie bepaalt hoe snel en op welke manier je alerts ontvangt.</li>
+        <li>Je kunt per gebruiker instellen of je wilt groeperen op severity, exception type of bekende problemen.</li>
+    </ul>
+    <a href="/api/recipients/dashboard" class="button-link">Terug naar dashboard</a>
+</div>
