@@ -2,26 +2,38 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Azure.Core;
 using Azure.Identity;
 using Azure.Monitor.Query;
 using Azure.Monitor.Query.Models;
-using Azure.Core;
 
+/// <summary>
+/// Provides functionality to fetch logs from Azure Monitor using a specified workspace and credentials.
+/// </summary>
 public class AzureLogProvider : ILogProvider
 {
-    private readonly LogsQueryClient _logsClient;
-    private readonly string _workspaceId;
+    private readonly LogsQueryClient logsClient;
+    private readonly string workspaceId;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AzureLogProvider"/> class.
+    /// </summary>
+    /// <param name="workspaceId">The Azure Log Analytics workspace ID.</param>
+    /// <param name="credential">The Azure credential used for authentication.</param>
     public AzureLogProvider(string workspaceId, TokenCredential credential)
     {
-        _workspaceId = workspaceId;
-        _logsClient = new LogsQueryClient(credential);
+        this.workspaceId = workspaceId;
+        this.logsClient = new LogsQueryClient(credential);
     }
 
+    /// <summary>
+    /// Asynchronously fetches logs from the Azure Log Analytics workspace.
+    /// </summary>
+    /// <returns>A list of log entries as strings.</returns>
     public async Task<List<string>> FetchLogsAsync()
     {
         const string appExceptionsQuery = "AppExceptions | take 300";
-        var response = await _logsClient.QueryWorkspaceAsync(_workspaceId, appExceptionsQuery, TimeSpan.FromDays(1));
+        var response = await this.logsClient.QueryWorkspaceAsync(this.workspaceId, appExceptionsQuery, TimeSpan.FromDays(1));
 
         var logs = new List<string>();
 

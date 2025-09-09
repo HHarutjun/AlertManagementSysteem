@@ -1,11 +1,21 @@
 using System;
-using Microsoft.Extensions.Configuration;
-using Azure.Identity;
-using Amazon.Runtime;
 using Amazon;
+using Amazon.Runtime;
+using Azure.Identity;
+using Microsoft.Extensions.Configuration;
 
+/// <summary>
+/// Factory class for creating log providers based on the specified provider type and configuration.
+/// </summary>
 public class LogProviderFactory
 {
+    /// <summary>
+    /// Creates an instance of <see cref="ILogProvider"/> based on the specified provider type and configuration.
+    /// </summary>
+    /// <param name="providerType">The type of log provider to create.</param>
+    /// <param name="config">The configuration containing necessary settings for the log provider.</param>
+    /// <returns>An instance of <see cref="ILogProvider"/>.</returns>
+    /// <exception cref="NotImplementedException">Thrown when the specified provider type is not implemented.</exception>
     public static ILogProvider CreateLogProvider(LogProviderType providerType, IConfiguration config)
     {
         return providerType switch
@@ -22,8 +32,7 @@ public class LogProviderFactory
         var credential = new ClientSecretCredential(
             config["Azure:TenantId"],
             config["Azure:ClientId"],
-            config["Azure:ClientSecret"]
-        );
+            config["Azure:ClientSecret"]);
         return new AzureLogProvider(workspaceId, credential);
     }
 
