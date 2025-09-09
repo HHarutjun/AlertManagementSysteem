@@ -49,16 +49,16 @@ public class CoreModelsTests
         var iteration = new Iteration { Path = "Development\\Sheldon\\Sprint 1" };
         Assert.Equal("Development\\Sheldon\\Sprint 1", iteration.Path);
 
-        var response = new IterationListResponse
+        var response = new TestIterationListResponse
         {
             Value = new System.Collections.Generic.List<Iteration> { iteration }
         };
         Assert.Single(response.Value);
         Assert.Equal("Development\\Sheldon\\Sprint 1", response.Value[0].Path);
-
+    
         // Test serialisatie/deserialisatie
         var json = JsonSerializer.Serialize(response);
-        var deserialized = JsonSerializer.Deserialize<IterationListResponse>(json);
+        var deserialized = JsonSerializer.Deserialize<TestIterationListResponse>(json);
         Assert.Single(deserialized.Value);
         Assert.Equal("Development\\Sheldon\\Sprint 1", deserialized.Value[0].Path);
     }

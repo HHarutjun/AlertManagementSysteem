@@ -92,21 +92,21 @@ public class TaskCreatorFake : ITaskCreator
 
     public Task<bool> TaskExistsAsync(string board, string title) => Task.FromResult(_taskExists);
 
-    public Task<string?> CreateWorkItemAsync(string board, string title, string description, WorkItemType workItemType = WorkItemType.Task)
+    public Task<string> CreateWorkItemAsync(string board, string title, string description, WorkItemType workItemType = WorkItemType.Task)
     {
         if (string.IsNullOrWhiteSpace(board))
             throw new ArgumentNullException(nameof(board));
         if (_taskExists)
-            return Task.FromResult<string?>(null);
+            return Task.FromResult<string>(null);
         CreatedWorkItems.Add((board, title, description, workItemType.ToString()));
-        return Task.FromResult<string?>("123");
+        return Task.FromResult<string>("123");
     }
 
-    public Task<string?> GetWorkItemDescriptionAsync(string board, string title)
+    public Task<string> GetWorkItemDescriptionAsync(string board, string title)
     {
         // Return the description if found, otherwise null
         var item = CreatedWorkItems.Find(w => w.Board == board && w.Title == title);
-        return Task.FromResult<string?>(item.Description);
+        return Task.FromResult<string>(item.Description);
     }
 
     public Task UpdateWorkItemDescriptionAsync(string board, string title, string newDescription)

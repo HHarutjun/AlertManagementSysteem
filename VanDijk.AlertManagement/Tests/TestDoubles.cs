@@ -49,16 +49,16 @@ public class TestTeamsAlertSender : IAlertSender
 public class TestTaskCreator : ITaskCreator
 {
     public Task<bool> TaskExistsAsync(string board, string title) => Task.FromResult(false);
-    public Task<string?> CreateWorkItemAsync(string board, string title, string description, WorkItemType workItemType = WorkItemType.Task)
+    public Task<string> CreateWorkItemAsync(string board, string title, string description, WorkItemType workItemType = WorkItemType.Task)
     {
         // Simuleer aanmaken van een werkitem, geef eventueel een dummy id terug
-        return Task.FromResult<string?>("TestWorkItemId");
+        return Task.FromResult<string>("TestWorkItemId");
     }
 
-    public Task<string?> GetWorkItemDescriptionAsync(string board, string title)
+    public Task<string> GetWorkItemDescriptionAsync(string board, string title)
     {
         // Return a dummy description for testing purposes
-        return Task.FromResult<string?>("Dummy description");
+        return Task.FromResult<string>("Dummy description");
     }
 
     public Task UpdateWorkItemDescriptionAsync(string board, string title, string newDescription)
@@ -85,18 +85,18 @@ public class TestTaskCreatorWithTracking : ITaskCreator
         var exists = CreatedWorkItems.Any(w => w.Board == board && w.Title == title);
         return Task.FromResult(exists);
     }
-    public Task<string?> CreateWorkItemAsync(string board, string title, string description, WorkItemType workItemType = WorkItemType.Task)
+    public Task<string> CreateWorkItemAsync(string board, string title, string description, WorkItemType workItemType = WorkItemType.Task)
     {
         if (CreatedWorkItems.Any(w => w.Board == board && w.Title == title))
-            return Task.FromResult<string?>(null);
+            return Task.FromResult<string>(null);
         CreatedWorkItems.Add((board, title, description, workItemType.ToString()));
-        return Task.FromResult<string?>("TrackedWorkItemId");
+        return Task.FromResult<string>("TrackedWorkItemId");
     }
 
-    public Task<string?> GetWorkItemDescriptionAsync(string board, string title)
+    public Task<string> GetWorkItemDescriptionAsync(string board, string title)
     {
         // Return a dummy description for testing purposes
-        return Task.FromResult<string?>("Dummy description");
+        return Task.FromResult<string>("Dummy description");
     }
 
     public Task UpdateWorkItemDescriptionAsync(string board, string title, string newDescription)
@@ -127,13 +127,13 @@ public class FailingEmailAlertSender : IAlertSender
 public class FailingTaskCreator : ITaskCreator
 {
     public Task<bool> TaskExistsAsync(string board, string title) => Task.FromResult(false);
-    public Task<string?> CreateWorkItemAsync(string board, string title, string description, WorkItemType workItemType = WorkItemType.Task)
+    public Task<string> CreateWorkItemAsync(string board, string title, string description, WorkItemType workItemType = WorkItemType.Task)
     {
         // Simuleer een failure
         throw new Exception("Simulated failure in CreateWorkItemAsync");
     }
 
-    public Task<string?> GetWorkItemDescriptionAsync(string board, string title)
+    public Task<string> GetWorkItemDescriptionAsync(string board, string title)
     {
         throw new Exception("Simulated failure in GetWorkItemDescriptionAsync");
     }
@@ -178,10 +178,15 @@ public class SprintServiceFake : ISprintService
 }
 
 // Dummy voor deserialisatie van Azure DevOps iterations
-public class IterationListResponse
+public class TestIterationListResponse
 {
     [System.Text.Json.Serialization.JsonPropertyName("value")]
     public System.Collections.Generic.List<Iteration> Value { get; set; }
+
+    public static implicit operator IterationListResponse(TestIterationListResponse v)
+    {
+        throw new NotImplementedException();
+    }
 }
 public class Iteration
 {
@@ -205,17 +210,17 @@ public class CapturingTaskCreator : ITaskCreator
 {
     public List<string> CreatedTitles { get; } = new();
     public Task<bool> TaskExistsAsync(string board, string title) => Task.FromResult(false);
-    public Task<string?> CreateWorkItemAsync(string board, string title, string description, WorkItemType workItemType = WorkItemType.Task)
+    public Task<string> CreateWorkItemAsync(string board, string title, string description, WorkItemType workItemType = WorkItemType.Task)
     {
         System.Diagnostics.Debug.WriteLine($"[TEST] CreateWorkItemAsync called with title: {title}");
         CreatedTitles.Add(title);
-        return Task.FromResult<string?>("TestWorkItemId");
+        return Task.FromResult<string>("TestWorkItemId");
     }
 
-    public Task<string?> GetWorkItemDescriptionAsync(string board, string title)
+    public Task<string> GetWorkItemDescriptionAsync(string board, string title)
     {
         // Return a dummy description for testing purposes
-        return Task.FromResult<string?>("Dummy description");
+        return Task.FromResult<string>("Dummy description");
     }
 
     public Task UpdateWorkItemDescriptionAsync(string board, string title, string newDescription)
@@ -248,20 +253,20 @@ public class TestTaskCreatorWithDescriptionUpdate : ITaskCreator
         return Task.FromResult(_createdTitles.Contains(title));
     }
 
-    public Task<string?> CreateWorkItemAsync(string board, string title, string description, WorkItemType workItemType = WorkItemType.Task)
+    public Task<string> CreateWorkItemAsync(string board, string title, string description, WorkItemType workItemType = WorkItemType.Task)
     {
         _createdTitles.Add(title);
         if (!_descriptions.ContainsKey(title))
             _descriptions[title] = "";
         _descriptions[title] = MergeProblemIds(_descriptions[title], description);
-        return Task.FromResult<string?>("TestWorkItemId");
+        return Task.FromResult<string>("TestWorkItemId");
     }
 
-    public Task<string?> GetWorkItemDescriptionAsync(string board, string title)
+    public Task<string> GetWorkItemDescriptionAsync(string board, string title)
     {
         if (_descriptions.TryGetValue(title, out var desc))
-            return Task.FromResult<string?>(desc);
-        return Task.FromResult<string?>(null);
+            return Task.FromResult<string>(desc);
+        return Task.FromResult<string>(""); // Return empty string instead of null
     }
 
     public Task UpdateWorkItemDescriptionAsync(string board, string title, string newDescription)

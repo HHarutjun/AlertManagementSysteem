@@ -1,19 +1,27 @@
 ﻿using System;
-using System.IO;
 using System.Collections.Generic;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 using Infrastructure.Storage;
-using Microsoft.Extensions.FileProviders;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.StaticFiles;
-using System.Threading.Tasks;
-using System.Linq;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
 using VanDijk.AlertManagement.Core.Interfaces;
 
-class Program
+/// <summary>
+/// The main entry point for the AlertManagementSystem application.
+/// </summary>
+public class Program
 {
-    static async Task Main(string[] args)
+    /// <summary>
+    /// The main entry point for the application. Starts the web server if '--web' is specified, otherwise runs alert processing in console mode.
+    /// </summary>
+    /// <param name="args">Command-line arguments.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    public static async Task Main(string[] args)
     {
         bool runWeb = args.Any(arg => string.Equals(arg, "--web", StringComparison.OrdinalIgnoreCase));
 
@@ -44,12 +52,11 @@ class Program
 
             // Configure storage for sent alerts to avoid duplicate notifications
             var sentAlertsFilePath = Path.Combine(
-                AppDomain.CurrentDomain.BaseDirectory, 
-                "..", 
-                "Infrastructure", 
-                "Storage", 
-                "sent_alerts.json"
-            );
+                AppDomain.CurrentDomain.BaseDirectory,
+                "..",
+                "Infrastructure",
+                "Storage",
+                "sent_alerts.json");
             sentAlertsFilePath = Path.GetFullPath(sentAlertsFilePath); // Resolve the full path
             Console.WriteLine($"[Debug] Using sent_alerts.json at: {sentAlertsFilePath}");
 
@@ -69,21 +76,21 @@ class Program
                 {
                     throw new ArgumentException($"Invalid log provider type: {logProviderTypeString}");
                 }
+
                 return LogProviderFactory.CreateLogProvider(logProviderType, config);
             });
 
             // Initialize AlertStrategyManager with the default strategy
             // This determines how logs are grouped into alerts
             var defaultStrategyType = Enum.Parse<GroupingStrategyType>(
-                builder.Configuration["AlertSettings:GroupingStrategy"] ?? "Correlation"
-            );
+                builder.Configuration["AlertSettings:GroupingStrategy"] ?? "Correlation");
             var defaultStrategy = AlertGroupingStrategyFactory.CreateStrategy(defaultStrategyType);
             builder.Services.AddSingleton(new AlertStrategyManager(new List<IAlertGroupingStrategy> { defaultStrategy }));
 
             // Leeg het bestand bij elke run
             if (File.Exists(sentAlertsFilePath))
             {
-                File.WriteAllText(sentAlertsFilePath, "");
+                File.WriteAllText(sentAlertsFilePath, string.Empty);
                 Console.WriteLine("[Debug] sent_alerts.json is leeggemaakt bij start van de applicatie.");
             }
 
@@ -93,8 +100,7 @@ class Program
                 "..",
                 "Infrastructure",
                 "Storage",
-                "recipients.json"
-            );
+                "recipients.json");
             recipientsFilePath = Path.GetFullPath(recipientsFilePath);
             builder.Services.AddSingleton(new RecipientStorage(recipientsFilePath));
 
@@ -145,7 +151,7 @@ class Program
             {
                 FileProvider = new PhysicalFileProvider(
                     Path.Combine(builder.Environment.ContentRootPath, "Templates")),
-                RequestPath = "/Templates"
+                RequestPath = "/Templates",
             });
 
             app.MapControllers();
@@ -176,6 +182,7 @@ class Program
                 var alertType = AlertSenderFactory.ParseAlertChannelType(alertTypeString);
                 return factory.CreateAlertSender(alertType);
             });
+
             // Register ISentAlertsStorage for DI
             services.AddSingleton<ISentAlertsStorage>(provider =>
                 provider.GetRequiredService<SentAlertsStorage>());
@@ -190,6 +197,7 @@ class Program
                 {
                     throw new ArgumentException($"Invalid log provider type: {logProviderTypeString}");
                 }
+
                 return LogProviderFactory.CreateLogProvider(logProviderType, config);
             });
 
@@ -199,8 +207,7 @@ class Program
                 "..",
                 "Infrastructure",
                 "Storage",
-                "recipients.json"
-            );
+                "recipients.json");
             recipientsFilePath2 = Path.GetFullPath(recipientsFilePath2);
             services.AddSingleton(new RecipientStorage(recipientsFilePath2));
 
@@ -219,8 +226,7 @@ class Program
                 "..",
                 "Infrastructure",
                 "Storage",
-                "sent_alerts.json"
-            );
+                "sent_alerts.json");
             var sentAlertsFullPath2 = Path.GetFullPath(sentAlertsFilePath2);
             services.AddSingleton<SentAlertsStorage>(provider =>
                 new SentAlertsStorage(sentAlertsFullPath2));
@@ -255,48 +261,38 @@ class Program
 
             // Register AlertStrategyManager for DI (zodat deze resolved kan worden)
             var defaultStrategyType2 = Enum.Parse<GroupingStrategyType>(
-                configuration["AlertSettings:GroupingStrategy"] ?? "Correlation"
-            );
+                configuration["AlertSettings:GroupingStrategy"] ?? "Correlation");
             var defaultStrategy2 = AlertGroupingStrategyFactory.CreateStrategy(defaultStrategyType2);
             services.AddSingleton(new AlertStrategyManager(new List<IAlertGroupingStrategy> { defaultStrategy2 }));
 
-            // Build the service provider to resolve dependencies
-            var serviceProvider = services.BuildServiceProvider();
-
-            // Resolve dependencies for alert processing
-            var alertSenderFactory = serviceProvider.GetRequiredService<AlertSenderFactory>();
-            var sentAlertsStorage = serviceProvider.GetRequiredService<SentAlertsStorage>();
-            var taskCreator = serviceProvider.GetRequiredService<ITaskCreator>();
-
-            // Configure the log provider (e.g., Azure or AWS)
-            var logProviderTypeString = configuration["LogProvider"] 
-                ?? throw new ArgumentNullException("LogProvider", "Log provider is not configured.");
-            if (!Enum.TryParse(logProviderTypeString, out LogProviderType logProviderType))
+            // Register AlertManager for DI
+            services.AddSingleton<AlertManager>(provider =>
             {
-                throw new ArgumentException($"Invalid log provider type: {logProviderTypeString}");
-            }
-            var logProvider = LogProviderFactory.CreateLogProvider(logProviderType, configuration);
+                var logProvider = provider.GetRequiredService<ILogProvider>();
+                var logProcessor = provider.GetRequiredService<ILogProcessor>();
+                var alertCreator = provider.GetRequiredService<IAlertCreator>();
+                var alertSender = provider.GetRequiredService<IAlertSender>();
+                var sentAlertsStorage = provider.GetRequiredService<SentAlertsStorage>();
+                var alertStrategyManager = provider.GetRequiredService<AlertStrategyManager>();
+                var recipientResolver = provider.GetRequiredService<IRecipientResolver>();
+                var taskCreator = provider.GetRequiredService<ITaskCreator>();
+                return new AlertManager(
+                    logProcessor,
+                    alertCreator,
+                    alertSender,
+                    sentAlertsStorage,
+                    alertStrategyManager,
+                    recipientResolver,
+                    taskCreator);
+            });
 
-            // Configure the alert sender (e.g., FlowMailer for email notifications)
-            var alertTypeString = configuration["AlertSettings:AlertType"] 
-                ?? throw new ArgumentNullException("AlertType", "Alert type is not configured.");
-            var alertType = AlertSenderFactory.ParseAlertChannelType(alertTypeString);
-            var alertSender = alertSenderFactory.CreateAlertSender(alertType);
+            // Build the service provider once
+#pragma warning disable ASP0000 // Suppress warning about BuildServiceProvider in console app context
+            using var serviceProvider = services.BuildServiceProvider();
+#pragma warning restore ASP0000
 
-            // Initialize the AlertManager, which orchestrates the entire alerting process
-            var recipientResolver = serviceProvider.GetRequiredService<IRecipientResolver>();
-            recipientResolver.ResolveRecipient(new Alert { Component = "func-tln-authorization-public-weu-tst" });
-            var alertManager = new AlertManager(
-                new LogProcessor(logProvider),
-                new AlertCreator(),
-                alertSender,
-                sentAlertsStorage,
-                serviceProvider.GetRequiredService<AlertStrategyManager>(),
-                recipientResolver,
-                taskCreator
-            );
-
-            // Start processing alerts
+            // Resolve AlertManager and start processing alerts
+            var alertManager = serviceProvider.GetRequiredService<AlertManager>();
             await alertManager.ProcessAlertsAsync();
         }
     }

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using VanDijk.AlertManagement.Core.Parsers;
 
 /// <summary>
 /// Represents a response containing a list of iterations.

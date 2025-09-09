@@ -68,7 +68,7 @@ public class AlertManagerTest
 
         mockTaskCreator.Setup(t => t.TaskExistsAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(false);
         mockTaskCreator.Setup(t => t.CreateWorkItemAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<WorkItemType>()))
-            .ReturnsAsync((string?)null);
+            .ReturnsAsync((string)null);
 
         // Act
         await sut.ProcessAlertsAsync();
@@ -126,9 +126,9 @@ public class AlertManagerTest
     /// AUT-04: Test geen taak aanmaken bij Info/Warning.
     /// </summary>
     [Theory(DisplayName = "AUT-04: Geen werkitem bij Info of Warning status")]
-    [InlineData("Up", "Info")]
-    [InlineData("Warning", "Warning")]
-    public async Task NoWorkItemCreated_WhenInfoOrWarningStatus(string statusText, string expectedSeverity)
+    [InlineData("Up")]
+    [InlineData("Warning")]
+    public async Task NoWorkItemCreated_WhenInfoOrWarningStatus(string statusText)
     {
         // Arrange
         var log = $"Timestamp: 2024-06-01T12:00:00Z | Endpoint: vdl-catalogus-neu | Severity: {(statusText == "Up" ? "1" : statusText == "Warning" ? "2" : "3")}";
@@ -304,7 +304,7 @@ public class AlertManagerTest
 
         mockTaskCreator.Setup(t => t.TaskExistsAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(false);
         mockTaskCreator.Setup(t => t.CreateWorkItemAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<WorkItemType>()))
-            .ReturnsAsync((string?)null);
+            .ReturnsAsync((string)null);
 
         // Act
         await sut.ProcessAlertsAsync();
@@ -339,7 +339,7 @@ public class AlertManagerTest
 
         mockTaskCreator.Setup(t => t.TaskExistsAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(false);
         mockTaskCreator.Setup(t => t.CreateWorkItemAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<WorkItemType>()))
-            .ReturnsAsync((string?)null);
+            .ReturnsAsync((string)null);
 
         // Simuleer exception bij versturen alert
         mockAlertSender.Setup(sender => sender.SendAlertAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
@@ -402,7 +402,7 @@ public class AlertManagerTest
 
         mockTaskCreator.Setup(t => t.TaskExistsAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(false);
         mockTaskCreator.Setup(t => t.CreateWorkItemAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<WorkItemType>()))
-            .ReturnsAsync((string?)null);
+            .ReturnsAsync((string)null);
 
         // Act
         await sut.ProcessAlertsAsync();
@@ -450,7 +450,7 @@ public class AlertManagerTest
 
         mockTaskCreator.Setup(t => t.TaskExistsAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(false);
         mockTaskCreator.Setup(t => t.CreateWorkItemAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<WorkItemType>()))
-            .ReturnsAsync((string?)null);
+            .ReturnsAsync((string)null);
 
         // Act
         await sut.ProcessAlertsAsync();
@@ -549,7 +549,7 @@ public class AlertManagerTest
 
         mockTaskCreator.Setup(t => t.TaskExistsAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(false);
         mockTaskCreator.Setup(t => t.CreateWorkItemAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<WorkItemType>()))
-            .ReturnsAsync((string?)null);
+            .ReturnsAsync((string)null);
 
         // Act
         await sut.ProcessAlertsAsync();
@@ -592,7 +592,7 @@ public class AlertManagerTest
 
         mockTaskCreator.Setup(t => t.TaskExistsAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(false);
         mockTaskCreator.Setup(t => t.CreateWorkItemAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<WorkItemType>()))
-            .ReturnsAsync((string?)null);
+            .ReturnsAsync((string)null);
 
         // Act
         await sut.ProcessAlertsAsync();
@@ -614,7 +614,7 @@ public class AlertManagerTest
         {
             Recipients = recipients;
         }
-        public Recipient? ResolveRecipient(Alert alert)
+        public Recipient ResolveRecipient(Alert alert)
         {
             return Recipients.FirstOrDefault(r =>
                 r.ResponsibleComponents.Any(c => string.Equals(c, alert.Component, StringComparison.OrdinalIgnoreCase)));

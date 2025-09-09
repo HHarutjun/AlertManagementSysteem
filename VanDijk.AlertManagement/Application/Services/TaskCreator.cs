@@ -140,9 +140,9 @@ public class TaskCreator : ITaskCreator
             try
             {
                 var workItemResponse = JsonSerializer.Deserialize<WorkItemResponse>(responseContent);
-                if (workItemResponse != null && workItemResponse.id != null)
+                if (workItemResponse != null && workItemResponse.Id != null)
                 {
-                    return workItemResponse.id.ToString();
+                    return workItemResponse.Id.ToString();
                 }
             }
             catch
