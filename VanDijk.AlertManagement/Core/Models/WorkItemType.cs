@@ -7,6 +7,7 @@ public enum WorkItemType
     /// A general task work item.
     /// </summary>
     Task,
+
     /// <summary>
     /// A bug or defect work item.
     /// </summary>

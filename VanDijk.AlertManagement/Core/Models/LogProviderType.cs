@@ -7,6 +7,7 @@ public enum LogProviderType
     /// Represents the Azure log provider.
     /// </summary>
     Azure,
+
     /// <summary>
     /// Represents the AWS log provider.
     /// </summary>

@@ -29,18 +29,22 @@ public class Recipient : IRecipient
     /// Gets or sets the email addresses of the recipient.
     /// </summary>
     public string Name { get; set; }
+
     /// <summary>
     /// Gets or sets the email addresses of the recipient.
     /// </summary>
     public List<string> Emails { get; set; }
+
     /// <summary>
     /// Gets or sets the list of components for which the recipient is responsible.
     /// </summary>
     public List<string> ResponsibleComponents { get; set; }
+
     /// <summary>
     /// Gets or sets the board associated with the recipient.
     /// </summary>
     public string Board { get; set; }
+
     /// <summary>
     /// Gets or sets the grouping strategy for the recipient.
     /// </summary>

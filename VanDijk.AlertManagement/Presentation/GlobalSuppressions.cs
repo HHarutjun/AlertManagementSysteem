@@ -6,3 +6,4 @@
 using System.Diagnostics.CodeAnalysis;
 
 [assembly: SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1633:File should have header", Justification = "Header is not required for this file.")]
+[assembly: SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA0001:XML Comment analysis disabled", Justification = "XML comment analysis is not disabled for the project.")]
