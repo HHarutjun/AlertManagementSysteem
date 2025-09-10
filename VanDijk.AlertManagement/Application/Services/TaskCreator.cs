@@ -42,30 +42,15 @@ public class TaskCreator : ITaskCreator
     /// <returns>True if the task exists; otherwise, false.</returns>
     public async Task<bool> TaskExistsAsync(string board, string title)
     {
-        using var httpClient = new HttpClient();
-        var authToken = Convert.ToBase64String(Encoding.ASCII.GetBytes($":{this.personalAccessToken}"));
-        httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", authToken);
-
-        var wiql = new
-        {
-            query = $@"
-                SELECT [System.Id] FROM WorkItems
-                WHERE [System.TeamProject] = '{this.projectName}'
-                AND [System.Title] = '{title.Replace("'", "''")}'
-                AND [System.AreaPath] = '{board.Replace("'", "''")}'
-            ",
-        };
-        var wiqlJson = JsonSerializer.Serialize(wiql);
-        var content = new StringContent(wiqlJson, Encoding.UTF8, "application/json");
-
+        using var httpClient = this.CreateHttpClientWithAuth();
+        var wiql = this.BuildWiqlQuery(title, board);
+        var content = new StringContent(JsonSerializer.Serialize(wiql), Encoding.UTF8, "application/json");
         var url = $"{this.organizationUrl}/{this.projectName}/_apis/wit/wiql?api-version=7.0";
         var response = await httpClient.PostAsync(url, content);
-
         if (response.IsSuccessStatusCode)
         {
             var responseContent = await response.Content.ReadAsStringAsync();
-            var json = JsonSerializer.Deserialize<JsonElement>(responseContent);
-            if (json.TryGetProperty("workItems", out var workItems) && workItems.GetArrayLength() > 0)
+            if (this.HasWorkItems(responseContent))
             {
                 Console.WriteLine($"[Debug] Task '{title}' already exists in Azure DevOps.");
                 this.existingTasks.Add(title);
@@ -105,51 +90,22 @@ public class TaskCreator : ITaskCreator
 
         var teamName = board.Split('\\').Last();
         Console.WriteLine($"[Debug] Using team name: {teamName}");
-
         var currentSprint = await this.sprintService.GetCurrentSprintAsync(teamName);
-
         Console.WriteLine($"[TaskCreator] Preparing to create {workItemType} on Azure DevOps board '{board}' in sprint '{currentSprint}'");
         Console.WriteLine($"Title: {title}");
         Console.WriteLine($"Description: {description}");
-
-        var workItem = new[]
-        {
-            new { op = "add", path = "/fields/System.Title", value = title },
-            new { op = "add", path = "/fields/System.Description", value = description },
-            new { op = "add", path = "/fields/System.AreaPath", value = board },
-            new { op = "add", path = "/fields/System.IterationPath", value = currentSprint },
-        };
-
-        var jsonContent = JsonSerializer.Serialize(workItem);
+        var workItemPatch = this.BuildWorkItemPatch(title, description, board, currentSprint);
+        var jsonContent = JsonSerializer.Serialize(workItemPatch);
         var content = new StringContent(jsonContent, Encoding.UTF8, "application/json-patch+json");
-
-        using var httpClient = new HttpClient();
-        var authToken = Convert.ToBase64String(Encoding.ASCII.GetBytes($":{this.personalAccessToken}"));
-        httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", authToken);
-
+        using var httpClient = this.CreateHttpClientWithAuth();
         var url = $"{this.organizationUrl}/{this.projectName}/_apis/wit/workitems/${workItemType.ToString()}?api-version=7.0";
         var response = await httpClient.PostAsync(url, content);
-
         if (response.IsSuccessStatusCode)
         {
             var responseContent = await response.Content.ReadAsStringAsync();
             Console.WriteLine($"[TaskCreator] {workItemType} created successfully. Response: {responseContent}");
             this.existingTasks.Add(title);
-
-            // Gebruik een model voor de response
-            try
-            {
-                var workItemResponse = JsonSerializer.Deserialize<WorkItemResponse>(responseContent);
-                if (workItemResponse != null && workItemResponse.Id != null)
-                {
-                    return workItemResponse.Id.ToString();
-                }
-            }
-            catch
-            {
-            }
-
-            return null;
+            return this.ParseWorkItemIdFromResponse(responseContent);
         }
         else
         {
@@ -167,25 +123,11 @@ public class TaskCreator : ITaskCreator
     /// <returns>The ID of the work item if found; otherwise, null.</returns>
     public async Task<string?> GetWorkItemIdAsync(string board, string title)
     {
-        using var httpClient = new HttpClient();
-        var authToken = Convert.ToBase64String(Encoding.ASCII.GetBytes($":{this.personalAccessToken}"));
-        httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", authToken);
-
-        var wiql = new
-        {
-            query = $@"
-                SELECT [System.Id] FROM WorkItems
-                WHERE [System.TeamProject] = '{this.projectName}'
-                AND [System.Title] = '{title.Replace("'", "''")}'
-                AND [System.AreaPath] = '{board.Replace("'", "''")}'
-            ",
-        };
-        var wiqlJson = JsonSerializer.Serialize(wiql);
-        var content = new StringContent(wiqlJson, Encoding.UTF8, "application/json");
-
+        using var httpClient = this.CreateHttpClientWithAuth();
+        var wiql = this.BuildWiqlQuery(title, board);
+        var content = new StringContent(JsonSerializer.Serialize(wiql), Encoding.UTF8, "application/json");
         var url = $"{this.organizationUrl}/{this.projectName}/_apis/wit/wiql?api-version=7.0";
         var response = await httpClient.PostAsync(url, content);
-
         if (response.IsSuccessStatusCode)
         {
             var responseContent = await response.Content.ReadAsStringAsync();
@@ -211,26 +153,11 @@ public class TaskCreator : ITaskCreator
     /// <returns>The description of the work item if found; otherwise, null.</returns>
     public async Task<string?> GetWorkItemDescriptionAsync(string board, string title)
     {
-        using var httpClient = new HttpClient();
-        var authToken = Convert.ToBase64String(Encoding.ASCII.GetBytes($":{this.personalAccessToken}"));
-        httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", authToken);
-
-        // Zoek het work item id
-        var wiql = new
-        {
-            query = $@"
-                SELECT [System.Id] FROM WorkItems
-                WHERE [System.TeamProject] = '{this.projectName}'
-                AND [System.Title] = '{title.Replace("'", "''")}'
-                AND [System.AreaPath] = '{board.Replace("'", "''")}'
-            ",
-        };
-        var wiqlJson = JsonSerializer.Serialize(wiql);
-        var content = new StringContent(wiqlJson, Encoding.UTF8, "application/json");
-
+        using var httpClient = this.CreateHttpClientWithAuth();
+        var wiql = this.BuildWiqlQuery(title, board);
+        var content = new StringContent(JsonSerializer.Serialize(wiql), Encoding.UTF8, "application/json");
         var url = $"{this.organizationUrl}/{this.projectName}/_apis/wit/wiql?api-version=7.0";
         var response = await httpClient.PostAsync(url, content);
-
         if (!response.IsSuccessStatusCode)
         {
             return null;
@@ -272,26 +199,11 @@ public class TaskCreator : ITaskCreator
     /// <returns>A task that represents the asynchronous operation.</returns>
     public async Task UpdateWorkItemDescriptionAsync(string board, string title, string newDescription)
     {
-        using var httpClient = new HttpClient();
-        var authToken = Convert.ToBase64String(Encoding.ASCII.GetBytes($":{this.personalAccessToken}"));
-        httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", authToken);
-
-        // Zoek het work item id
-        var wiql = new
-        {
-            query = $@"
-                SELECT [System.Id] FROM WorkItems
-                WHERE [System.TeamProject] = '{this.projectName}'
-                AND [System.Title] = '{title.Replace("'", "''")}'
-                AND [System.AreaPath] = '{board.Replace("'", "''")}'
-            ",
-        };
-        var wiqlJson = JsonSerializer.Serialize(wiql);
-        var content = new StringContent(wiqlJson, Encoding.UTF8, "application/json");
-
+        using var httpClient = this.CreateHttpClientWithAuth();
+        var wiql = this.BuildWiqlQuery(title, board);
+        var content = new StringContent(JsonSerializer.Serialize(wiql), Encoding.UTF8, "application/json");
         var url = $"{this.organizationUrl}/{this.projectName}/_apis/wit/wiql?api-version=7.0";
         var response = await httpClient.PostAsync(url, content);
-
         if (!response.IsSuccessStatusCode)
         {
             return;
@@ -315,5 +227,61 @@ public class TaskCreator : ITaskCreator
                 patchResp.EnsureSuccessStatusCode();
             }
         }
+    }
+
+    private HttpClient CreateHttpClientWithAuth()
+    {
+        var httpClient = new HttpClient();
+        var authToken = Convert.ToBase64String(Encoding.ASCII.GetBytes($":{this.personalAccessToken}"));
+        httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", authToken);
+        return httpClient;
+    }
+
+    private object BuildWiqlQuery(string title, string board)
+    {
+        return new
+        {
+            query = $@"
+                SELECT [System.Id] FROM WorkItems
+                WHERE [System.TeamProject] = '{this.projectName}'
+                AND [System.Title] = '{title.Replace("'", "''")}'
+                AND [System.AreaPath] = '{board.Replace("'", "''")}'
+            ",
+        };
+    }
+
+    private object[] BuildWorkItemPatch(string title, string description, string board, string currentSprint)
+    {
+        return new[]
+        {
+            new { op = "add", path = "/fields/System.Title", value = title },
+            new { op = "add", path = "/fields/System.Description", value = description },
+            new { op = "add", path = "/fields/System.AreaPath", value = board },
+            new { op = "add", path = "/fields/System.IterationPath", value = currentSprint },
+        };
+    }
+
+    private bool HasWorkItems(string responseContent)
+    {
+        var json = JsonSerializer.Deserialize<JsonElement>(responseContent);
+        return json.TryGetProperty("workItems", out var workItems) && workItems.GetArrayLength() > 0;
+    }
+
+    private string? ParseWorkItemIdFromResponse(string responseContent)
+    {
+        try
+        {
+            var workItemResponse = JsonSerializer.Deserialize<WorkItemResponse>(responseContent);
+            if (workItemResponse != null && workItemResponse.Id != null)
+            {
+                return workItemResponse.Id.ToString();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Error] Failed to parse WorkItemResponse: {ex.Message}");
+        }
+
+        return null;
     }
 }
