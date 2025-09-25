@@ -43,6 +43,8 @@ cd Tests
 dotnet test --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.ExcludeByAttribute="ExcludeFromCodeCoverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[Infrastructure*]*,[*]TaskCreator*,[*]SprintService*"
 ```
 
+Na het uitvoeren van de command wordt er in het project `Tests` een coverage-bestand aangemaakt in de map `TestResults`. In dit bestand (`coverage.cobertura.xml`) kun je het totale percentage code coverage terugvinden in het attribuut `line-rate` op de `<coverage>`-regel. Dit geeft aan welk percentage van de code door de tests is afgedekt.
+
 Voor een uitgebreide motivatie waarom bepaalde klassen uitgesloten zijn van code coverage, zie hoofdstuk 1.1. van het [testplan](https://luminiseu.atlassian.net/wiki/spaces/AF/pages/593854546/Testplan+Alertmanagamentsysteem).
 
 ## Bijdragen
